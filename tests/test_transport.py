@@ -8,6 +8,12 @@ from xiaoyi_adapter.transport import Transport
 
 
 class TransportTests(unittest.IsolatedAsyncioTestCase):
+    async def test_inbox_consumer_can_be_exclusive(self):
+        transport = Transport(SimpleNamespace(max_message_bytes=262144), None)
+        queue = SimpleNamespace(consume=AsyncMock(return_value="tag"))
+        self.assertEqual(await transport.consume(queue, AsyncMock(), exclusive=True), "tag")
+        self.assertTrue(queue.consume.call_args.kwargs["exclusive"])
+
     def fixture(self, consumers=0, messages=0):
         settings = SimpleNamespace(io_timeout=1, max_message_bytes=262144)
         transport = Transport(settings, None)

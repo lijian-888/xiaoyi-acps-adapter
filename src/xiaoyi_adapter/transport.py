@@ -31,7 +31,7 @@ class Transport:
         return await aio_pika.connect(url, ssl_context=self.tls, timeout=self.s.io_timeout,
                                       heartbeat=30, client_properties={"xiaoyi_group_id": group_id or "inbox"})
 
-    async def consume(self, queue, handler, entry=None):
+    async def consume(self, queue, handler, entry=None, *, exclusive=False):
         async def receive(message):
             try:
                 if len(message.body) > self.s.max_message_bytes:
@@ -59,7 +59,7 @@ class Transport:
             finally:
                 if entry is not None:
                     entry["callbacks"] -= 1
-        return await queue.consume(receive)
+        return await queue.consume(receive, exclusive=exclusive)
 
     async def start_inbox(self, handler):
         if self.inbox is not None:
@@ -71,7 +71,7 @@ class Transport:
                  arguments={"x-expires": INBOX_QUEUE_EXPIRES_MS, "x-message-ttl": INBOX_MESSAGE_TTL_MS})
         exchange = await channel.declare_exchange(INBOX_EXCHANGE_NAME, aio_pika.ExchangeType.TOPIC, durable=True)
         await self.inbox_queue.bind(exchange, routing_key=build_inbox_queue_name(self.s.aic))
-        self.inbox_tag = await self.consume(self.inbox_queue, handler)
+        self.inbox_tag = await self.consume(self.inbox_queue, handler, exclusive=True)
 
     async def join(self, group, handler, *, recovery=False):
         if group["id"] in self.groups:
