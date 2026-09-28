@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import ssl
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -75,7 +76,17 @@ class Settings(BaseModel):
     def check_acs(self):
         from acps_sdk.acs import AgentCapabilitySpec
         acs = json.loads(Path(self.acs_file).read_text(encoding="utf-8"))
-        AgentCapabilitySpec.model_validate(acs)
+        sdk_view = deepcopy(acs)
+        queue_protocols = sdk_view.get("capabilities", {}).get("messageQueue")
+        if isinstance(queue_protocols, list):
+            # Registry 2.1.0 approves rabbitmq:>=4.2, while SDK 2.1.0's
+            # enum stops at rabbitmq:3.11. Adapt only this known enum value
+            # for structural validation; never rewrite the approved ACS.
+            sdk_view["capabilities"]["messageQueue"] = [
+                "rabbitmq:3.11" if value == "rabbitmq:>=4.2" else value
+                for value in queue_protocols
+            ]
+        AgentCapabilitySpec.model_validate(sdk_view)
         if acs.get("aic") != self.aic:
             raise ValueError("ACS identity mismatch")
         skills = {s["id"] for s in acs.get("skills", [])}
