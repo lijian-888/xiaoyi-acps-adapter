@@ -18,7 +18,7 @@ class InvitationTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.store = Store(Path(self.tmp.name) / "state.db")
-        self.transport = SimpleNamespace(join=AsyncMock())
+        self.transport = SimpleNamespace(join=AsyncMock(), groups={})
         self.policy = SimpleNamespace(permits=lambda aic: aic == LEADER)
         self.runtime = Runtime(SimpleNamespace(aic=PARTNER, max_groups=2), self.store, None, self.transport, self.policy, None)
 
@@ -34,10 +34,35 @@ class InvitationTests(unittest.IsolatedAsyncioTestCase):
     async def test_join_uses_exact_identity_and_inbox_evidence(self):
         await self.runtime.invitation(self.invitation())
         self.transport.join.assert_awaited_once()
+        self.assertEqual(self.store.get("groups", "group-unit-1")["state"], "joining")
+        self.assertEqual(self.store.pending(), [])
+        self.transport.groups["group-unit-1"] = {}
+        proof = self.proof()
+        self.assertTrue(await self.runtime.confirm_join("group-unit-1", proof))
+        self.assertFalse(await self.runtime.confirm_join("group-unit-1", proof))
         self.assertEqual(self.store.get("groups", "group-unit-1")["state"], "joined")
+        self.assertEqual(len(self.store.pending()), 1)
         result = self.store.pending()[0][2]
         self.assertEqual(result["senderId"], PARTNER)
         self.assertTrue(result["status"]["connected"])
+
+    @staticmethod
+    def proof(**changes):
+        values = dict(connection="present", channel="present", groupConsumer="present",
+                      partnerQueue="present", leaderQueue="present", exchange="present",
+                      groupAcl="present", memberAcl="present", inbox="present",
+                      inboxConsumers=1, evidenceComplete=True, connectionIdentityObserved=True,
+                      evidenceId="observed-exact-connection")
+        values.update(changes)
+        return SimpleNamespace(**values)
+
+    async def test_incomplete_connection_evidence_never_announces_join(self):
+        await self.runtime.invitation(self.invitation())
+        self.transport.groups["group-unit-1"] = {}
+        self.assertFalse(await self.runtime.confirm_join("group-unit-1", self.proof(connectionIdentityObserved=False)))
+        self.assertFalse(await self.runtime.confirm_join("group-unit-1", self.proof(connection="unknown")))
+        self.assertEqual(self.store.get("groups", "group-unit-1")["state"], "joining")
+        self.assertEqual(self.store.pending(), [])
 
     async def test_replayed_token_cannot_join_other_group(self):
         await self.runtime.invitation(self.invitation())

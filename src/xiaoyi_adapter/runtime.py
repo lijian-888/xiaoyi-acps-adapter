@@ -68,11 +68,10 @@ class Runtime:
                 self.store.audit("invitation_accepted", gid, {"leader": leader, "partner": self.s.aic, "path": "inbox"})
             try:
                 await self.transport.join(group, lambda body: self.message(gid, body))
-                group.update(state="joined", joined_at=now())
-                with self.store.transaction():
-                    self.store.put("groups", gid, group)
-                    self.store.enqueue(gid, self.status_message(group, True))
-                    self.store.audit("partner_joined", gid)
+                # A Group can be dissolved seconds after connected=true.
+                # Wait until 9007 has observed the exact dedicated connection;
+                # otherwise its later absence remains unknown forever.
+                self.store.audit("group_transport_joined", gid)
             except Exception as exc:
                 group.update(error=type(exc).__name__)
                 self.store.put("groups", gid, group)
@@ -184,11 +183,29 @@ class Runtime:
             return
         await self.transport.join(group, lambda body: self.message(group["id"], body), recovery=True)
         group = self.store.get("groups", group["id"])
-        if group["state"] in {"joining", "joined"}:
-            group.update(state="joined", joined_at=group.get("joined_at", now()))
+        if group["state"] == "joined":
             with self.store.transaction():
-                self.store.put("groups", group["id"], group)
                 self.store.enqueue(group["id"], self.status_message(group, True))
+
+    async def confirm_join(self, gid, proof):
+        required = (proof.connection, proof.channel, proof.groupConsumer,
+                    proof.partnerQueue, proof.leaderQueue, proof.exchange,
+                    proof.groupAcl, proof.memberAcl, proof.inbox)
+        if not (proof.evidenceComplete and proof.connectionIdentityObserved
+                and all(value == "present" for value in required)
+                and proof.inboxConsumers == 1):
+            return False
+        async with self.lock:
+            group = self.store.get("groups", gid)
+            if not group or group["state"] != "joining" or gid not in self.transport.groups:
+                return False
+            group.update(state="joined", joined_at=now(),
+                         connection_identity_observed=True, evidence_id=proof.evidenceId)
+            with self.store.transaction():
+                self.store.put("groups", gid, group)
+                self.store.enqueue(gid, self.status_message(group, True))
+                self.store.audit("partner_joined", gid, {"evidence_id": proof.evidenceId})
+            return True
 
     async def tick(self):
         if time.time() - self.last_policy_refresh >= self.s.policy_refresh_seconds:
@@ -199,11 +216,13 @@ class Runtime:
         await self.flush()
         for group in self.store.all("groups"):
             gid = group["id"]
-            if group["state"] == "joined" and time.time() - self.observation_times.get(gid, 0) >= 5:
+            if group["state"] in {"joining", "joined"} and time.time() - self.observation_times.get(gid, 0) >= (2 if group["state"] == "joining" else 5):
                 self.observation_times[gid] = time.time()
                 try:
                     proof = await self.evidence.read(group)
-                    if proof.connectionIdentityObserved and proof.connection == "present":
+                    if group["state"] == "joining":
+                        await self.confirm_join(gid, proof)
+                    elif proof.connectionIdentityObserved and proof.connection == "present":
                         group = self.store.get("groups", gid)
                         group.update(connection_identity_observed=True, evidence_id=proof.evidenceId)
                         self.store.put("groups", gid, group)

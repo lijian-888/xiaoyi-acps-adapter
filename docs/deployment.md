@@ -59,3 +59,11 @@ python -m xiaoyi_adapter.policyctl approve \
 没有活动Group时可停止新实例，恢复原镜像、原配置、原状态目录并启动原实例。跟屁虫接管测试失败且仍有活动Group时，先保留现场并通过原Leader正常解散；不能直接覆盖数据库、伪造closed或并行启动第二个同AIC实例。
 
 新项目镜像的构建和候选部署不要求重建隆耘API、Registry或天眼适配器。若需变更215的共享证据授权配置，应先安排独立变更及回退方案。
+
+## 短会话遗漏连接观测后的正式恢复
+
+新版入组在9007确认专用连接归属前不会向Leader报告connected=true。此前版本若在观察前即完成短会话，证据接口可能对连接/Channel返回`unknown`，不能自动标记closed。正式恢复仅用于这种已失败的历史Group，不能替代常规DISBAND。
+
+先停用该实例并保留状态库；精确核对Leader已dissolved、协议退出Publisher Ack已记录、任务已终态、9007显示Group双方队列、Exchange和ACL均不存在、RabbitMQ当前仅一条该Partner连接且它正消费长期Inbox。将215管理端的只读连接归属核对和193 Leader终态核对写入带时间戳、三方AIC/Group标识的JSON证明，放入实例私有证据目录。不得仅凭`connected=false`或队列不存在推断连接已清理。
+
+在停止实例的状态目录上运行`python -m xiaoyi_adapter.repair`，先用`--dry-run`核验，再带真实审核人和原因执行。该工具重新通过9007 mTLS读证据，检查证明不超过60秒、精确身份和Inbox连接归属、无未完成业务或待发消息；只为指定Group写入`formal-unobserved-connection`终态和持久审计。它不会修改平台MQ/ACL，也不会把该Group计为自动解散通过。若任何条件不足，保留leaving并升级人工排查。
