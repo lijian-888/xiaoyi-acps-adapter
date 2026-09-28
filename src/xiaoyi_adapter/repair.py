@@ -32,8 +32,11 @@ def validate_recovery(settings, store, group, proof, attestation):
         raise ValueError("BUSINESS_WORK_NOT_SETTLED")
     absent = (proof.groupConsumer, proof.partnerQueue, proof.leaderQueue,
               proof.exchange, proof.groupAcl, proof.memberAcl)
-    if (not proof.evidenceComplete
-            or proof.connection != "unknown" or proof.channel != "unknown"
+    # The platform marks the whole proof incomplete when a short-lived
+    # connection was never observed. Only those two fields may be unknown;
+    # the independent 215 management readback must account for the sole
+    # remaining Partner connection as the long-lived Inbox connection.
+    if (proof.connection != "unknown" or proof.channel != "unknown"
             or proof.connectionIdentityObserved or any(value != "absent" for value in absent)
             or proof.inbox != "present" or proof.inboxConsumers != 1):
         raise ValueError("PLATFORM_RESOURCES_NOT_EXACTLY_RECONCILED")

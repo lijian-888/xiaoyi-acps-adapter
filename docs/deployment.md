@@ -66,4 +66,4 @@ python -m xiaoyi_adapter.policyctl approve \
 
 先停用该实例并保留状态库；精确核对Leader已dissolved、协议退出Publisher Ack已记录、任务已终态、9007显示Group双方队列、Exchange和ACL均不存在、RabbitMQ当前仅一条该Partner连接且它正消费长期Inbox。将215管理端的只读连接归属核对和193 Leader终态核对写入带时间戳、三方AIC/Group标识的JSON证明，放入实例私有证据目录。不得仅凭`connected=false`或队列不存在推断连接已清理。
 
-在停止实例的状态目录上运行`python -m xiaoyi_adapter.repair`，先用`--dry-run`核验，再带真实审核人和原因执行。该工具重新通过9007 mTLS读证据，检查证明不超过60秒、精确身份和Inbox连接归属、无未完成业务或待发消息；只为指定Group写入`formal-unobserved-connection`终态和持久审计。它不会修改平台MQ/ACL，也不会把该Group计为自动解散通过。若任何条件不足，保留leaving并升级人工排查。
+在停止实例的状态目录上运行`python -m xiaoyi_adapter.repair`，先用`--dry-run`核验，再带真实审核人和原因执行。该工具重新通过9007 mTLS读证据；对于从未观测到专用连接的历史会话，9007的`connection/channel=unknown`且`evidenceComplete=false`，这本身**不构成清理成功证据**。工具另外要求其余Group资源精确`absent`、215管理端证明当前唯一Partner连接属于长期Inbox、Leader已解散、证明不超过60秒、无未完成业务或待发消息；只为指定Group写入`formal-unobserved-connection`终态和持久审计。它不会修改平台MQ/ACL，也不会把该Group计为自动解散通过。若任何条件不足，保留leaving并升级人工排查。

@@ -14,7 +14,7 @@ class FormalRecoveryTests(unittest.TestCase):
                           exit_confirmed=True, disband_id="disband-1",
                           exit_response_id="exit-1", deadline_at=time.time() - 1)
         self.proof = SimpleNamespace(
-            evidenceComplete=True, connection="unknown", channel="unknown",
+            evidenceComplete=False, connection="unknown", channel="unknown",
             connectionIdentityObserved=False, groupConsumer="absent",
             partnerQueue="absent", leaderQueue="absent", exchange="absent",
             groupAcl="absent", memberAcl="absent", inbox="present", inboxConsumers=1)
@@ -27,8 +27,8 @@ class FormalRecoveryTests(unittest.TestCase):
     def test_precise_complete_evidence_permits_formal_recovery(self):
         validate_recovery(self.settings, self.store, self.group, self.proof, self.attestation)
 
-    def test_unknown_or_incomplete_platform_resource_is_not_absence(self):
-        for field, value in (("partnerQueue", "unknown"), ("evidenceComplete", False),
+    def test_unknown_platform_resource_is_not_absence(self):
+        for field, value in (("partnerQueue", "unknown"),
                              ("inboxConsumers", 0), ("connection", "present")):
             with self.subTest(field=field):
                 original = getattr(self.proof, field)
