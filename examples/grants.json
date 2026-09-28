@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "partner_aic": "REPLACE_WITH_APPROVED_TEST_PARTNER_AIC",
+  "issued_at": "2026-01-01T00:00:00+00:00",
+  "expires_at": "2026-01-02T00:00:00+00:00",
+  "grants": [{
+    "leader_aic": "1.2.156.3088.1.0001.00001.ZJM2XM.50E81A.0XHW",
+    "capabilities": ["test.echo"], "purpose": "test",
+    "approved_by": "REPLACE_WITH_REAL_REVIEWER",
+    "approved_at": "2026-01-01T00:00:00+00:00",
+    "reason": "独立通用适配器Group回显验收"
+  }]
+}

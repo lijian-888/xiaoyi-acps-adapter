@@ -1,0 +1,21 @@
+{
+  "aic": "REPLACE_WITH_APPROVED_TEST_PARTNER_AIC",
+  "acs_file": "/config/acs.json",
+  "state_file": "/state/adapter.sqlite3",
+  "cert_file": "/run/secrets/client.pem",
+  "key_file": "/run/secrets/client.key",
+  "ca_file": "/run/secrets/ca.pem",
+  "mq_host": "acps-mq.e-farmer.cn",
+  "mq_port": 5671,
+  "mq_vhost": "acps",
+  "policy_file": "/policy/grants.json",
+  "evidence_url": "https://acps-mq.e-farmer.cn:9007/evidence/v1/groups",
+  "max_groups": 2,
+  "max_tasks": 2,
+  "capabilities": [{
+    "id": "test.echo", "connector": "echo", "allow_continue": true, "allow_cancel": true,
+    "input_schema": {"type": "object", "required": ["text"], "properties": {"text": {"type": "string", "maxLength": 16000}}, "additionalProperties": false},
+    "output_schema": {"type": "object", "required": ["text"], "properties": {"text": {"type": "string"}}, "additionalProperties": false}
+  }],
+  "connectors": {"echo": {"type": "echo"}}
+}

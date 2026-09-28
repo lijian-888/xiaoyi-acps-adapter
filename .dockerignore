@@ -1,0 +1,9 @@
+.git
+.venv
+.local
+credentials
+state
+**/__pycache__
+**/*.key
+**/*.pem
+**/*.sqlite*

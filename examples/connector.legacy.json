@@ -1,0 +1,9 @@
+{
+  "type": "json-http",
+  "base_url": "https://knowledge.example.invalid/api/",
+  "token_file": "/run/secrets/business-token",
+  "path": "knowledge/ask",
+  "request_fields": {"question": "text"},
+  "success": {"field": "code", "equals": 0},
+  "response_fields": {"text": "data.answer"}
+}
