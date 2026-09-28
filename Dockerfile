@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+ARG PYTHON_BASE=python:3.12-slim
+FROM ${PYTHON_BASE}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /opt/adapter
 COPY pyproject.toml requirements.lock ./
