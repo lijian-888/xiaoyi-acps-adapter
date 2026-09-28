@@ -12,3 +12,4 @@ credentials/
 *.egg-info/
 build/
 dist/
+wheelhouse/

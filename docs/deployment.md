@@ -24,6 +24,8 @@ docker run --rm --entrypoint python xiaoyi-acps-adapter:<commit> -c 'import xiao
 
 依赖使用requirements.lock。记录Git提交号、镜像ID、构建日志及测试结果。禁止把宿主机.env、私钥或业务令牌打入镜像。
 
+若服务器访问Docker Hub/PyPI不稳定，可从受信任环境导入官方Python镜像，核对镜像层摘要；为目标Python/操作系统准备完整wheelhouse（含setuptools==84.0.0、wheel及其依赖），然后使用`deploy/Dockerfile.offline`构建。wheelhouse不入Git。跨平台下载时须显式包含Linux所需cffi/pycparser，并在目标镜像内执行pip check和完整测试；不能只用Windows测试代替。
+
 ## 准备实例
 
 1. 使用现有注册平台或官方CLI完成ACS审批、AIC、EAB和clientAuth证书。
